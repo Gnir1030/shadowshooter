@@ -61,7 +61,7 @@ options = {
 	viewSize: {x: G.WIDTH, y: G.HEIGHT},
     isCapturing: true,
     //isCapturingGameCanvasOnly: true,
-    //isReplayEnabled: true,
+    isReplayEnabled: true,
 
 };
 
@@ -106,6 +106,7 @@ let fBullets;
 * pos: Vector
 * speed: number
 * trap: number
+* level: number
 * }} Enemy
 */
 
@@ -118,9 +119,11 @@ let count;
 let trapnum;
 let rand;
 let set;
+let scount;
 
 function update() {
     if(score < 0){
+        player = subplayer = enemies = fBullets = set = null;
         end();
     }
 	if (!ticks) {
@@ -142,33 +145,25 @@ function update() {
         };
         //player shadow
         enemies = [];
-
         fBullets = [];
         count = 0;
         trapnum = 0;
         rand = 0;
+        scount = 11;
         set = new Set();
 	}
 
-    stars.forEach((s) => {
-        s.pos.y += s.speed;
-        if (s.pos.y > G.HEIGHT) s.pos.y = 0;
-        color("light_black");
-        box(s.pos, 1);
-    });
+    color("red");
+    rect(0, 6, G.WIDTH/20 * scount, 3);
+    if(scount > 20){
+        scount = 20;
+    }
+    if(scount <= 0){
+        end();
+    }
 
-    //text(fBullets.length.toString(), 3, 10);
-
-    // Updating and drawing bullets
-    fBullets.forEach((fb) => {
-        // Move the bullets upwards
-        fb.pos.y -= G.FBULLET_SPEED;
-        // Drawing
-        color("yellow");
-        box(fb.pos, 2);
-    });
-
-    if (enemies.length === 0) {
+    if (enemies.length === 0 || enemies[0].pos.y == G.HEIGHT*2/3) {
+        scount--;
         set = new Set();
         for(let i = 0; i < 4; i++){
             set.add(Math.ceil(rnd(1, 16)));
@@ -182,37 +177,22 @@ function update() {
             }
             const posX = 2 + i * 6;
             const posY = 0;
-            enemies.push({ pos: vec(posX, posY), trap: trapnum, speed: G.ENEMY_SPEED});
+            enemies.push({ pos: vec(posX, posY), trap: trapnum, speed: G.ENEMY_SPEED, level: 1});
         }
     }
 
-    remove(enemies, (e) => {
-        e.pos.y += e.speed;
-        color("black");
-        const isCollidingWithFBullets = char(e.trap == 1?"c":"d", e.pos)
-        .isColliding.rect.yellow;
-        if (isCollidingWithFBullets) {
-            color(e.trap == 1?"yellow":"red");
-            addScore(e.trap == 1? 5 : -30, e.pos);
-            particle(e.pos);
-        }
-        if(e.pos.y > G.HEIGHT){
-            addScore(e.trap == 1? -20 : 5, e.pos);
-        }
-
-        return (isCollidingWithFBullets || e.pos.y > G.HEIGHT);
+    stars.forEach((s) => {
+        s.pos.y += s.speed;
+        if (s.pos.y > G.HEIGHT) s.pos.y = 0;
+        color("light_black");
+        box(s.pos, 1);
     });
 
-    remove(fBullets, (fb) => {
-        color("yellow");
-        const isCollidingWithEnemies = box(fb.pos, 2).isColliding.char.c;
-        return (isCollidingWithEnemies || fb.pos.y < 0);
-    });
-
+    //text(fBullets.length.toString(), 3, 10);
     if(subplayer.pos.x > G.WIDTH - 2){
         subplayer.pos.x = player.pos.x;
     }
-    player.pos.clamp(0, G.WIDTH, 0, G.HEIGHT);
+    //player.pos.clamp(0, G.WIDTH, 0, G.HEIGHT);
     if (input.isJustPressed) {
         subplayer.pos.x += 6;
     }
@@ -222,6 +202,7 @@ function update() {
             subplayer.pos.x += 6;
             count = 0;
         }
+        color ("black");
         char("b", subplayer.pos.x, subplayer.pos.y);
     }
     else if(input.isJustReleased){
@@ -239,5 +220,49 @@ function update() {
     }
     color ("black");
     char("a", player.pos);
+    // Updating and drawing bullets
+
+    fBullets.forEach((fb) => {
+        // Move the bullets upwards
+        fb.pos.y -= G.FBULLET_SPEED;
+        // Drawing
+        color("yellow");
+        box(fb.pos, 2);
+    });
+
+
+    remove(enemies, (e) => {
+        e.pos.y += e.speed;
+        color("black");
+        const isCollidingWithFBullets = char(e.trap == 1?"c":"d", e.pos)
+        .isColliding.rect.yellow;
+        if (isCollidingWithFBullets) {
+            if(e.trap == 1){
+                color("yellow");
+                addScore(3, e.pos);
+                scount++;
+            }
+            else{
+                color("red");
+                scount = scount - 3;
+            }
+            particle(e.pos);
+        }
+        if(e.pos.y > G.HEIGHT){
+            if(e.trap == 1){
+                scount--;
+            }
+            else{
+                addScore(1, e.pos);
+            }
+        }
+        return (isCollidingWithFBullets || e.pos.y > G.HEIGHT);
+    });
+
+    remove(fBullets, (fb) => {
+        color("yellow");
+        const isCollidingWithEnemies = box(fb.pos, 2).isColliding.char.c;
+        return (isCollidingWithEnemies || fb.pos.y < 0);
+    });
 }
 
